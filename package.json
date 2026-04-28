@@ -1,0 +1,17 @@
+{
+  "name": "bonwifi",
+  "version": "0.1.0",
+  "description": "BonWifi - captive portal + simple payment simulator",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.20.2",
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6",
+    "nanoid": "^4.0.0"
+  }
+}

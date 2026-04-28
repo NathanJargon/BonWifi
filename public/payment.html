@@ -1,0 +1,73 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BonWifi - Payment</title>
+    <style>body{font-family:Arial;padding:2rem;max-width:600px;margin:auto}label{display:block;margin-top:1rem}</style>
+  </head>
+  <body>
+    <h1>Payment (Simulated)</h1>
+    <form id="payForm">
+      <label>Minutes: <input id="minutes" name="minutes" readonly /></label>
+      <label>Your MAC Address (auto-detected from router): <input id="mac" name="mac" readonly /></label>
+      <button type="submit">Pay (simulate)</button>
+    </form>
+
+    <div id="result" style="margin-top:1rem"></div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const minutes = urlParams.get('minutes') || 30;
+      const macFromRouter = urlParams.get('mac');
+      
+      document.getElementById('minutes').value = minutes;
+      
+      // Generate a pseudo MAC if not provided by router, or use router's
+      const deviceMac = macFromRouter || generatePseudoMAC();
+      document.getElementById('mac').value = deviceMac;
+
+      function generatePseudoMAC() {
+        return 'XX:XX:XX:' + Math.random().toString(16).substr(2, 2).toUpperCase() + ':' + Math.random().toString(16).substr(2, 2).toUpperCase() + ':' + Math.random().toString(16).substr(2, 2).toUpperCase();
+      }
+
+      document.getElementById('payForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const m = document.getElementById('minutes').value;
+        const mac = document.getElementById('mac').value;
+        
+        // Step 1: Create voucher
+        const voucherRes = await fetch('/api/create-voucher', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({minutes:m})
+        });
+        const voucherData = await voucherRes.json();
+        
+        // Step 2: Auto-redeem the voucher for this device
+        const redeemRes = await fetch('/api/redeem', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({mac:mac, code:voucherData.code})
+        });
+        const redeemData = await redeemRes.json();
+        
+        if (redeemRes.ok) {
+          const expiresDate = new Date(redeemData.expires_at);
+          document.getElementById('result').innerHTML = `
+            <div style="background:#d4edda;padding:1rem;border-radius:4px;border:1px solid #c3e6cb">
+              <h2 style="color:#155724;margin-top:0">✓ Connected!</h2>
+              <p><strong>Voucher:</strong> ${voucherData.code}</p>
+              <p><strong>Duration:</strong> ${m} minutes</p>
+              <p><strong>Device MAC:</strong> ${mac}</p>
+              <p><strong>Access expires:</strong> ${expiresDate.toLocaleTimeString()}</p>
+              <p style="margin-top:1rem;color:#666">You should now have WiFi access. Enjoy!</p>
+            </div>
+          `;
+        } else {
+          document.getElementById('result').innerHTML = `<p style="color:#721c24">Error: ${redeemData.error}</p>`;
+        }
+      });
+    </script>
+  </body>
+</html>
