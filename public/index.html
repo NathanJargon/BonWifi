@@ -3,81 +3,208 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>BonWifi - Captive Portal</title>
+    <title>BonWifi - WiFi Portal</title>
     <style>
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
-        padding: 2rem; 
-        max-width: 600px; 
-        margin: auto;
-        background: #f5f5f5;
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-      h1 { color: #0078D4; margin-bottom: 0.5rem; }
-      .subtitle { color: #666; margin-bottom: 2rem; }
-      .plan { 
-        border: 1px solid #ddd; 
-        padding: 1.5rem; 
-        margin: 1rem 0;
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+      
+      .container {
         background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 700px;
+        width: 100%;
+        padding: 3rem 2rem;
       }
-      .plan h3 { margin-top: 0; }
-      .plan p { margin: 0.5rem 0; color: #666; }
-      .cta { 
-        display: inline-block; 
-        padding: 0.75rem 1.5rem; 
-        background: #0078D4; 
-        color: white; 
-        text-decoration: none;
-        border-radius: 4px;
-        font-weight: 600;
-        transition: background 0.2s;
-        border: none;
+      
+      .header {
+        text-align: center;
+        margin-bottom: 3rem;
+      }
+      
+      .logo {
+        font-size: 2.5rem;
+        font-weight: 700;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        margin-bottom: 0.5rem;
+      }
+      
+      .subtitle {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 2rem;
+      }
+      
+      .plans {
+        display: grid;
+        gap: 1.5rem;
+        margin-bottom: 2rem;
+      }
+      
+      .plan {
+        border: 2px solid #e5e7eb;
+        border-radius: 12px;
+        padding: 2rem;
+        background: white;
+        transition: all 0.3s ease;
         cursor: pointer;
       }
-      .cta:hover { background: #106ebe; }
-      .free { color: #28a745; font-weight: bold; }
-      .footer {
-        margin-top: 2rem;
-        padding-top: 2rem;
-        border-top: 1px solid #ddd;
-        color: #999;
+      
+      .plan:hover {
+        border-color: #667eea;
+        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.15);
+        transform: translateY(-2px);
+      }
+      
+      .plan-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+      }
+      
+      .plan-duration {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #1f2937;
+      }
+      
+      .plan-price {
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: #667eea;
+        text-align: right;
+      }
+      
+      .plan-price.free {
+        color: #10b981;
+      }
+      
+      .plan-description {
+        color: #666;
         font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+      }
+      
+      .plan-button {
+        width: 100%;
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .plan-button:hover {
+        transform: scale(1.02);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+      }
+      
+      .plan-button:active {
+        transform: scale(0.98);
+      }
+      
+      .footer {
+        text-align: center;
+        padding-top: 2rem;
+        border-top: 1px solid #e5e7eb;
+        color: #999;
+        font-size: 0.85rem;
+      }
+      
+      .footer-note {
+        margin-bottom: 0.5rem;
+        line-height: 1.6;
+      }
+      
+      @media (max-width: 600px) {
+        .container {
+          padding: 2rem 1.5rem;
+        }
+        
+        .logo {
+          font-size: 2rem;
+        }
+        
+        .plan {
+          padding: 1.5rem;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>🌐 BonWifi Hotspot</h1>
-    <p class="subtitle">Get instant WiFi access. Select a plan below.</p>
+    <div class="container">
+      <div class="header">
+        <div class="logo">BonWifi</div>
+        <div class="subtitle">Fast, Reliable WiFi Access</div>
+      </div>
 
-    <div class="plan">
-      <h3>30 minutes <span class="free">FREE</span></h3>
-      <p>Try out the connection.</p>
-      <button class="cta" onclick="goToPay(30)">Get 30 minutes</button>
-    </div>
+      <div class="plans">
+        <div class="plan">
+          <div class="plan-header">
+            <div class="plan-duration">30 Minutes</div>
+            <div class="plan-price">₱50</div>
+          </div>
+          <div class="plan-description">Try it out risk-free. Perfect for quick browsing.</div>
+          <button class="plan-button" onclick="goToPay(30)">Get Access</button>
+        </div>
 
-    <div class="plan">
-      <h3>2 hours - ₱120</h3>
-      <p>Fast browsing for 2 hours.</p>
-      <button class="cta" onclick="goToPay(120)">Buy 2 hours</button>
-    </div>
+        <div class="plan">
+          <div class="plan-header">
+            <div class="plan-duration">1 Hour</div>
+            <div class="plan-price">₱100</div>
+          </div>
+          <div class="plan-description">Perfect for a quick coffee break or short meeting.</div>
+          <button class="plan-button" onclick="goToPay(60)">Get Access</button>
+        </div>
 
-    <div class="plan">
-      <h3>1 day - ₱300</h3>
-      <p>All-day access.</p>
-      <button class="cta" onclick="goToPay(1440)">Buy 1 day</button>
-    </div>
+        <div class="plan">
+          <div class="plan-header">
+            <div class="plan-duration">2 Hours</div>
+            <div class="plan-price">₱200</div>
+          </div>
+          <div class="plan-description">Stream, work, or browse freely without interruptions.</div>
+          <button class="plan-button" onclick="goToPay(120)">Get Access</button>
+        </div>
 
-    <div class="footer">
-      <p>💳 Payment is simulated in this demo. In production, real payment processing would be integrated (Stripe, GCash, etc.).</p>
-      <p>✅ After payment, you'll be automatically connected to WiFi.</p>
+        <div class="plan">
+          <div class="plan-header">
+            <div class="plan-duration">3 Hours</div>
+            <div class="plan-price">₱300</div>
+          </div>
+          <div class="plan-description">All-day pass. Stay connected all you need.</div>
+          <button class="plan-button" onclick="goToPay(180)">Get Access</button>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="footer-note">Instant access after payment • Multiple payment methods available</div>
+        <div class="footer-note">Pay securely with GCash, PayMaya, or GoTyme</div>
+      </div>
     </div>
 
     <script>
       function goToPay(minutes) {
-        // In production, the router gateway would pass the device's MAC address as a param
-        // For now, we'll let the payment page generate a pseudo-MAC
         window.location.href = `/pay?minutes=${minutes}`;
       }
     </script>

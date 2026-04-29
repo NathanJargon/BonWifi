@@ -1,239 +1,141 @@
-# BonWifi
+# 🌐 BonWifi
 
-A captive portal WiFi payment system with automatic device redemption.
+**Captive Portal WiFi Payment System** — Connect → Pay → Get Instant Access
 
-## How It Works
-
-```
-Guest connects to WiFi
-    ↓
-Captive Portal redirects to landing page
-    ↓
-Guest selects a plan (30 min free, 2h, 1 day)
-    ↓
-Payment simulation generates unique voucher code
-    ↓
-Voucher is automatically redeemed with device MAC
-    ↓
-Guest gets WiFi access for purchased duration
-```
-
-## Features
-
-- **Captive Portal** - Auto-redirects to payment page
-- **Payment Simulator** - Generates unique voucher codes
-- **Automatic Redemption** - Immediately connects device after payment
-- **Session Management** - Tracks active WiFi sessions with expiration
-- **Status Check** - View connection status anytime
-- **SQLite Database** - Stores vouchers and sessions
-
-## Quick Start
-
-1. **Install dependencies**
-
-```bash
-cd BonWifi
-npm install
-```
-
-2. **Start server**
-
-```bash
-npm start
-```
-
-3. **Access the portal**
-
-- Landing page: http://localhost:3000/
-- Payment page: http://localhost:3000/pay?minutes=30
-- Check status: http://localhost:3000/status
-
-## QR Code Integration
-
-To QR-code the website:
-
-```
-qr-code → http://your-domain.com/ → Portal landing page
-```
-
-When scanned on your WiFi network's captive portal:
-1. Device connects to WiFi
-2. Browser opens landing page (via captive portal redirect)
-3. Guest buys access
-4. Payment page auto-redeems the voucher
-5. Device gets WiFi access
-
-## Architecture
-
-### Frontend
-
-- **index.html** - Plan selection page
-- **payment.html** - Payment simulator + automatic redemption
-- **status.html** - Check active connection status
-
-### Backend (Node.js + Express)
-
-```
-POST /api/create-voucher
-  - Input: minutes
-  - Output: { code, minutes }
-  - Creates a unique voucher code in the database
-
-POST /api/redeem
-  - Input: { mac, code }
-  - Output: { mac, code, expires_at }
-  - Links voucher to device MAC, creates session
-
-GET /api/session/:mac
-  - Input: device MAC address
-  - Output: { active, expires_at }
-  - Checks if device has active WiFi access
-```
-
-### Database (SQLite)
-
-```sql
-vouchers table
-├── code (unique)
-├── minutes
-└── created_at
-
-sessions table
-├── mac (device address)
-├── voucher_code
-└── expires_at
-```
-
-## Production Implementation
-
-### Router/Gateway Integration
-
-In production, your router gateway should:
-
-1. **On captive portal redirect**, pass device MAC to landing page:
-   ```
-   http://your-domain.com/?mac=AA:BB:CC:DD:EE:FF
-   ```
-
-2. **Check session status** before granting WiFi access:
-   ```bash
-   curl http://your-domain.com/api/session/AA:BB:CC:DD:EE:FF
-   # Response: { active: true, expires_at: "2026-04-28T15:30:00Z" }
-   ```
-
-3. **Grant access if session is active**, revoke when expired
-
-### Payment Integration
-
-Replace the payment simulator with real payment processors:
-- **Stripe** for international cards
-- **GCash** for Philippine mobile payments
-- **PayMongo** for PH payment hub
-- **Razorpay** for India
-
-### Network Setup
-
-```
-Internet
-    ↓
-Router/Gateway (with DNS redirecting to captive portal)
-    ↓
-BonWifi Server (Node.js app)
-    ↓
-SQLite Database
-```
-
-## Testing Workflow
-
-1. Start server: `npm start`
-2. Open http://localhost:3000/
-3. Click "Get 30 minutes"
-4. See voucher generated + auto-redeemed
-5. Check http://localhost:3000/status with your MAC
-
-## Notes
-
-- Payment is currently **simulated** - real payment processing not included
-- Device MAC address is **generated** in this MVP - production would get it from router
-- Session expiration is checked server-side and can be verified anytime
-- No authentication layer (add in production!)
-- Database is local SQLite (scale to PostgreSQL/MongoDB for production)
-
-## Recommendation
-
-If you want to test BonWifi right now, keep your current router and use this app as a voucher/payment demo. That lets you validate the flow without buying new hardware.
-
-If you want automatic whitelist/unwhitelist behavior without a Raspberry Pi, the practical options are:
-
-1. **MikroTik or UniFi** - best choice for real hotspot automation and captive portal control
-2. **OpenWrt on a supported router** - cheaper, but more technical to set up
-3. **Manual router admin panel** - workable for tiny tests, but not scalable because you must add/remove MACs yourself
-
-If your router already has a WPA password, that is fine for testing, but it means users must know the password before reaching the captive portal unless the router supports guest portal redirection.
+Guests can buy WiFi access via QR codes (GCash, PayMaya, GoTyme). Auto-redeems and tracks sessions by MAC address.
 
 ---
 
-## Deployment on Raspberry Pi Zero 2 W
+## ⚡ Features
 
-### Hardware Requirements
+- 💳 **Multiple Payment Methods** — GCash, PayMaya, GoTyme (QR codes)
+- 🎟️ **Instant Vouchers** — Auto-generated & auto-redeemed  
+- 🔐 **Session Tracking** — MAC-based access with expiry times
+- ✅ **Status Checker** — Guests verify access anytime
+- 🚀 **Lightweight** — Runs on Raspberry Pi Zero 2 W (~$25)
 
-- **Raspberry Pi Zero 2 W** (~$15–30)
-- **microSD card** - 16GB+ Class 10 recommended
-- **5V stable power supply** - 2.5A+ recommended
-- **USB OTG adapter** (optional, for keyboard/debugging)
-- **USB-Ethernet adapter** (optional, for wired uplink)
-- **Case + heatsink** (recommended)
+---
 
-### Why Pi Zero 2 W for BonWifi?
+## 🎨 Screenshots
 
-- **Cheap**: ~$25–30 total setup cost
-- **Sufficient**: 512MB RAM + quad-core CPU handles 1–10 concurrent users
-- **Lightweight**: Runs hostapd/dnsmasq/Node.js efficiently
-- **Self-contained**: No external router needed; broadcasts its own WiFi + captive portal
-- **Persistent**: Runs 24/7 with minimal power (3–5W)
+### Landing Page
+Select your plan: ₱50 (30m) | ₱100 (1h) | ₱200 (2h) | ₱300 (3h)
+![Landing Page](./docs/landing.png)
 
-### Quick Setup (Automated)
+### Payment Page  
+Choose payment method (GCash/PayMaya/GoTyme) → Scan QR → Instant access
+![Payment Page](./docs/payment.png)
 
-1. **Flash Raspberry Pi OS Lite** to microSD:
-   - Download from [raspberrypi.com](https://www.raspberrypi.com/software/)
-   - Use Raspberry Pi Imager and write to microSD
+### Status Page
+Check your WiFi access by MAC address — see remaining time or buy now
+![Status Page](./docs/status.png)
 
-2. **Boot Pi, enable SSH, connect to internet:**
-   ```bash
-   # First boot: expand filesystem and enable SSH via raspi-config
-   sudo raspi-config
-   # → Interfacing Options → SSH → Enable
-   ```
+### Success Screen
+After payment confirmation
+![Success](./docs/complete.png)
 
-3. **Clone this repo and run setup:**
-   ```bash
-   git clone https://github.com/yourusername/BonWifi.git
-   cd BonWifi
-   chmod +x setup-pi-zero.sh
-   sudo ./setup-pi-zero.sh
-   ```
+---
 
-4. **Done!** Services start automatically:
-   - BonWifi app listens on `http://10.0.0.1:3000`
-   - Captive portal redirects all HTTP traffic to your app
-   - WiFi SSID: **BonWifi**, Password: **BonWifi123!**
-
-### Manual Setup (Step-by-Step)
-
-If the automated script doesn't work for your setup:
+## 🚀 Quick Start
 
 ```bash
-# 1. Update system
+# Install
+npm install
+
+# Run
+npm start
+
+# Visit
+http://localhost:3000           # Landing page
+http://localhost:3000/pay       # Payment (auto with ?minutes=30)
+http://localhost:3000/status    # Check access status
+```
+
+---
+
+## 💻 Tech Stack
+
+| Component | Tech |
+|-----------|------|
+| Frontend | HTML5, CSS3, JavaScript (QRious) |
+| Backend | Node.js + Express |
+| Database | SQLite |
+| Network | hostapd (WiFi) + dnsmasq (DHCP/captive portal) |
+
+---
+
+## 📡 How It Works
+
+```
+Guest connects to WiFi
+        ↓
+Captive portal redirects to landing page
+        ↓
+Guest selects plan + payment method
+        ↓
+Scans QR code → Auto-confirm payment
+        ↓
+Voucher redeemed with device MAC
+        ↓
+WiFi access granted ✓
+```
+
+### API Reference
+
+```bash
+# Create voucher
+POST /api/create-voucher
+  body: { minutes, paymentMethod }
+  returns: { code, minutes, paymentMethod }
+
+# Redeem voucher for device
+POST /api/redeem
+  body: { mac, code }
+  returns: { mac, expires_at }
+
+# Check session status
+GET /api/session/:mac
+  returns: { active: bool, expires_at: ISO8601 }
+```
+
+---
+
+## 🌐 Deployment on Raspberry Pi Zero 2 W
+
+### Hardware
+
+- Raspberry Pi Zero 2 W (~$15–30)
+- microSD card (16GB+)
+- 5V power supply (2.5A+)
+- Optional: USB-Ethernet adapter, case
+
+### Install
+
+```bash
+# 1. Flash Raspberry Pi OS Lite to microSD
+
+# 2. Boot & enable SSH
+ssh pi@raspberrypi.local
+sudo raspi-config
+# → Enable SSH
+
+# 3. Clone & setup
+git clone <repo-url>
+cd BonWifi
+chmod +x setup-pi-zero.sh
+sudo ./setup-pi-zero.sh
+
+# Done! WiFi broadcasts as "BonWifi" (password: BonWifi123!)
+# Server runs at http://10.0.0.1:3000
+```
+
+### Manual Setup (if script doesn't work)
+
+```bash
 sudo apt update && sudo apt upgrade -y
+sudo apt install -y hostapd dnsmasq sqlite3 nodejs npm
 
-# 2. Install dependencies
-sudo apt install -y hostapd dnsmasq iptables-persistent sqlite3 git build-essential
-
-# 3. Install Node.js
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
-
-# 4. Configure static IP for wlan0
+# Configure wlan0
 sudo tee /etc/network/interfaces.d/wlan0 > /dev/null << EOF
 auto wlan0
 iface wlan0 inet static
@@ -241,18 +143,15 @@ iface wlan0 inet static
   netmask 255.255.255.0
 EOF
 
-# 5. Configure dnsmasq (DHCP + Captive Portal)
+# Configure dnsmasq
 sudo tee /etc/dnsmasq.conf > /dev/null << EOF
 interface=wlan0
 dhcp-range=10.0.0.2,10.0.0.50,12h
 dhcp-option=option:router,10.0.0.1
-dhcp-option=option:dns-server,10.0.0.1
-no-resolv
-server=8.8.8.8
 address=/#/10.0.0.1
 EOF
 
-# 6. Configure hostapd (WiFi broadcaster)
+# Configure hostapd
 sudo tee /etc/hostapd/hostapd.conf > /dev/null << EOF
 interface=wlan0
 driver=nl80211
@@ -265,113 +164,99 @@ wpa_key_mgmt=WPA-PSK
 wpa_pairwise=CCMP
 EOF
 
-# 7. Enable IP forwarding (allow internet passthrough)
+# Enable IP forwarding
 echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
 sudo sysctl -p
 
-# 8. Set up NAT (route traffic from wlan0 to eth0/your internet)
+# NAT rules
 UPSTREAM=$(ip route | grep default | awk '{print $5}' | head -1)
 sudo iptables -t nat -A POSTROUTING -o $UPSTREAM -j MASQUERADE
-sudo iptables -A FORWARD -i wlan0 -o $UPSTREAM -j ACCEPT
-sudo iptables-A FORWARD -i $UPSTREAM -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
 sudo iptables-save | sudo tee /etc/iptables/rules.v4
 
-# 9. Install BonWifi
-sudo mkdir -p /opt/BonWifi
-cd /opt/BonWifi
-sudo git clone https://github.com/yourusername/BonWifi.git .
+# Install BonWifi
+cd /opt
+sudo git clone <repo-url> BonWifi
+cd BonWifi
 sudo npm install
-
-# 10. Create systemd service
-sudo cp bonwifi.service /etc/systemd/system/bonwifi.service
-sudo systemctl daemon-reload
-sudo systemctl enable bonwifi
-sudo systemctl enable hostapd
-sudo systemctl enable dnsmasq
-
-# 11. Start everything
-sudo systemctl restart networking
-sudo systemctl start hostapd
-sudo systemctl start dnsmasq
-sudo systemctl start bonwifi
+sudo cp bonwifi.service /etc/systemd/system/
+sudo systemctl enable bonwifi hostapd dnsmasq
+sudo systemctl start bonwifi hostapd dnsmasq
 ```
 
-### Verification & Debugging
+### Verify
 
-**Check if services are running:**
 ```bash
+# Check services
 sudo systemctl status bonwifi
 sudo systemctl status hostapd
-sudo systemctl status dnsmasq
-sudo systemctl status networking
+
+# Test: Connect to "BonWifi" network from another device
+# Browser should auto-open http://10.0.0.1:3000/
 ```
 
-**View BonWifi logs:**
-```bash
-sudo journalctl -u bonwifi -f  # Follow logs in real-time
+---
+
+## 🔧 Configuration
+
+### Pricing
+
+Edit `public/index.html` → change plan prices in the HTML or update `getPrice()` in `public/payment.html`
+
+### WiFi SSID & Password
+
+Edit `/etc/hostapd/hostapd.conf` on Pi:
+```
+ssid=YourNetworkName
+wpa_passphrase=YourPassword
 ```
 
-**Test connectivity from another device:**
-1. Connect to WiFi network `BonWifi` (password: `BonWifi123!`)
-2. Open browser → Should auto-redirect to `http://10.0.0.1/`
-3. Select a plan and test payment flow
+### Payment Methods
 
-**Check internet passthrough:**
-```bash
-# From Pi:
-ping 8.8.8.8
+Currently mock (simulation). To integrate real payments:
 
-# From connected device:
-ping 8.8.8.8
-```
+1. **GCash** - Add credentials to `.env`, implement webhook verification in `server.js`
+2. **PayMaya** - Similar process
+3. **GoTyme** - Similar process
 
-**Reset/troubleshoot:**
-```bash
-# Restart all services
-sudo systemctl restart hostapd dnsmasq bonwifi
+### Session Timeout
 
-# Check wlan0 is up
-ifconfig wlan0
+Edit `server.js` → `completePayment()` function → change `minutes * 60000`
 
-# Verify DHCP leases
-cat /var/lib/dnsmasq/dnsmasq.leases
-```
+---
 
-### GCash Integration (Production)
+## ⚠️ Production Checklist
 
-When ready to accept real payments:
+- [ ] Replace payment simulator with real processor
+- [ ] Add HTTPS (Let's Encrypt)
+- [ ] Secure database with backups
+- [ ] Add admin panel for refunds/vouchers
+- [ ] Implement logging & monitoring
+- [ ] Add rate limiting on payment endpoints
+- [ ] Whitelist payment IPs (webhooks)
+- [ ] Test with real devices
+- [ ] Use PostgreSQL instead of SQLite for scale
 
-1. Register with GCash Developer Platform
-2. Add your credentials to `.env`:
-   ```bash
-   GCASH_MERCHANT_ID=your_id
-   GCASH_API_KEY=your_key
-   GCASH_WEBHOOK_SECRET=your_secret
-   ```
-3. Update `server.js` to call GCash API (webhook handling for confirmation)
-4. Replace mock payment with real GCash callback verification
+---
 
-### Performance Notes
+## 📝 Notes
 
-- **Concurrent users**: Tested up to 10 simultaneous connections
-- **Bandwidth**: Suitable for browsing/social media; not recommended for streaming/downloads
-- **Uptime**: Requires stable 5V power; use UPS for reliability
-- **Storage**: microSD writes can cause wear; consider rotating logs to `/tmp`
+- **Payment**: Currently simulated — real processing requires payment provider integration
+- **MAC Address**: Generated randomly in this demo — production gets it from router/device
+- **Database**: SQLite is fine for testing; use PostgreSQL/MongoDB for production
+- **No Auth**: Add authentication before going live
 
-For higher load, upgrade to:
-- **Raspberry Pi 4** (8GB) - supports 50+ users
-- **MikroTik RB750Gr3** - professional hotspot, better performance
-- **UniFi Dream Machine** - enterprise-grade, built-in payment support
+---
 
-### Troubleshooting
+## 📞 Support
 
-| Issue | Solution |
-|-------|----------|
-| No WiFi network appears | Check `hostapd` status: `sudo systemctl restart hostapd` |
-| Guests connect but no internet | Enable IP forwarding + NAT iptables rules (step 7–8) |
-| Captive portal doesn't redirect | Verify dnsmasq `address=/#/10.0.0.1` rule |
-| BonWifi app crashes | Check logs: `sudo journalctl -u bonwifi` |
-| Payment fails | Ensure SQLite DB has write permissions: `sudo chown -R root:root /opt/BonWifi` |
-#   B o n W i f i 
- 
- 
+For issues:
+1. Check logs: `sudo journalctl -u bonwifi -f`
+2. Restart services: `sudo systemctl restart bonwifi hostapd dnsmasq`
+3. Verify wlan0: `ifconfig wlan0`
+4. Check DHCP: `cat /var/lib/dnsmasq/dnsmasq.leases`
+
+---
+
+## 📄 License
+
+MIT — Free to use & modify

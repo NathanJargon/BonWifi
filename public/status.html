@@ -5,84 +5,225 @@
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>BonWifi - Connection Status</title>
     <style>
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; 
-        padding: 2rem; 
-        max-width: 600px; 
-        margin: auto;
-        background: #f5f5f5;
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
       }
-      h1 { color: #0078D4; margin-bottom: 0.5rem; }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+      }
+      
+      .container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 600px;
+        width: 100%;
+        padding: 2.5rem;
+      }
+      
+      .header {
+        text-align: center;
+        margin-bottom: 2rem;
+      }
+      
+      .header-title {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #1f2937;
+      }
+      
+      .header-subtitle {
+        color: #666;
+        font-size: 0.95rem;
+        margin-top: 0.5rem;
+      }
+      
+      .input-section {
+        margin-bottom: 2rem;
+      }
+      
+      .input-group {
+        display: flex;
+        gap: 0.75rem;
+      }
+      
+      input {
+        flex: 1;
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 1rem;
+        background: white;
+      }
+      
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+      }
+      
+      input::placeholder {
+        color: #999;
+      }
+      
+      .check-button {
+        padding: 0.75rem 1.5rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+      
+      .check-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+      }
+      
+      .check-button:active {
+        transform: translateY(0);
+      }
+      
       .status-card {
         background: white;
         padding: 2rem;
-        border-radius: 8px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        text-align: center;
+        border-radius: 12px;
+        border-left: 4px solid #d1d5db;
+        margin-top: 2rem;
+        display: none;
       }
-      .status-active {
-        border-left: 4px solid #28a745;
+      
+      .status-card.active {
+        display: block;
+        border-left-color: #10b981;
+        background: linear-gradient(to right, #10b98108, transparent);
       }
-      .status-inactive {
-        border-left: 4px solid #dc3545;
+      
+      .status-card.inactive {
+        display: block;
+        border-left-color: #ef4444;
+        background: linear-gradient(to right, #ef444408, transparent);
       }
-      .status-icon {
-        font-size: 3rem;
+      
+      .status-title {
+        font-size: 1.5rem;
+        font-weight: 700;
         margin-bottom: 1rem;
       }
-      .status-text {
-        font-size: 1.2rem;
-        font-weight: 600;
-        margin: 1rem 0;
+      
+      .status-card.active .status-title {
+        color: #10b981;
       }
-      .status-details {
-        background: #f9f9f9;
+      
+      .status-card.inactive .status-title {
+        color: #ef4444;
+      }
+      
+      .detail-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem 0;
+        border-bottom: 1px solid #e5e7eb;
+      }
+      
+      .detail-row:last-child {
+        border-bottom: none;
+      }
+      
+      .detail-label {
+        color: #666;
+        font-weight: 500;
+      }
+      
+      .detail-value {
+        color: #1f2937;
+        font-weight: 600;
+        font-family: 'Courier New', monospace;
+      }
+      
+      .status-message {
+        color: #666;
+        margin-top: 1rem;
+        line-height: 1.6;
+      }
+      
+      .buy-button {
+        width: 100%;
+        padding: 0.75rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 1.5rem;
+        transition: all 0.3s ease;
+      }
+      
+      .buy-button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+      }
+      
+      .info-banner {
+        background: #e0e7ff;
+        border-left: 4px solid #667eea;
         padding: 1rem;
-        border-radius: 4px;
-        margin: 1rem 0;
-        text-align: left;
-        font-family: monospace;
+        border-radius: 8px;
+        margin-bottom: 2rem;
+        color: #4338ca;
         font-size: 0.9rem;
       }
-      .label { color: #666; }
-      .value { color: #333; font-weight: bold; }
-      .button {
-        display: inline-block;
-        padding: 0.75rem 1.5rem;
-        background: #0078D4;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        font-weight: 600;
-        margin-top: 1rem;
-        border: none;
-        cursor: pointer;
-      }
-      .button:hover { background: #106ebe; }
-      .input-section {
-        margin: 1rem 0;
-      }
-      input {
-        padding: 0.5rem;
-        border: 1px solid #ddd;
-        border-radius: 4px;
-        width: 100%;
-        box-sizing: border-box;
+      
+      @media (max-width: 600px) {
+        .container {
+          padding: 1.5rem;
+        }
+        
+        .header-title {
+          font-size: 1.5rem;
+        }
+        
+        .input-group {
+          flex-direction: column;
+        }
+        
+        .check-button {
+          width: 100%;
+        }
       }
     </style>
   </head>
   <body>
-    <h1>🔌 Connection Status</h1>
-
-    <div class="status-card" id="statusCard">
-      <div class="input-section">
-        <label for="macInput">Enter your device MAC address:</label>
-        <input type="text" id="macInput" placeholder="e.g., XX:XX:XX:AB:CD:EF" />
-        <button class="button" onclick="checkStatus()">Check Status</button>
+    <div class="container">
+      <div class="header">
+        <div class="header-title">Connection Status</div>
+        <div class="header-subtitle">Check your WiFi access</div>
       </div>
-    </div>
 
-    <div id="resultDiv" style="margin-top:2rem"></div>
+      <div class="info-banner">
+        Enter your device MAC address to check if you have active WiFi access
+      </div>
+
+      <div class="input-section">
+        <div class="input-group">
+          <input type="text" id="macInput" placeholder="e.g., XX:XX:XX:AB:CD:EF" />
+          <button class="check-button" onclick="checkStatus()">Check</button>
+        </div>
+      </div>
+
+      <div id="resultDiv"></div>
+    </div>
 
     <script>
       async function checkStatus() {
@@ -104,32 +245,44 @@
             const minutesLeft = Math.ceil((expiresDate - now) / 60000);
             
             resultDiv.innerHTML = `
-              <div class="status-card status-active">
-                <div class="status-icon">✅</div>
-                <div class="status-text">Connected</div>
-                <div class="status-details">
-                  <div><span class="label">MAC Address:</span><br /><span class="value">${mac}</span></div>
-                  <div style="margin-top:0.5rem"><span class="label">Time Remaining:</span><br /><span class="value">${minutesLeft} minutes</span></div>
-                  <div style="margin-top:0.5rem"><span class="label">Expires At:</span><br /><span class="value">${expiresDate.toLocaleString()}</span></div>
+              <div class="status-card active">
+                <div class="status-title">Connected - Active Access</div>
+                <div class="detail-row">
+                  <span class="detail-label">MAC Address</span>
+                  <span class="detail-value">${mac}</span>
                 </div>
-                <p>You have WiFi access! Enjoy browsing.</p>
+                <div class="detail-row">
+                  <span class="detail-label">Time Remaining</span>
+                  <span class="detail-value">${minutesLeft} minutes</span>
+                </div>
+                <div class="detail-row">
+                  <span class="detail-label">Expires At</span>
+                  <span class="detail-value">${expiresDate.toLocaleString()}</span>
+                </div>
+                <p class="status-message">Your device has access to the WiFi network. Enjoy browsing!</p>
               </div>
             `;
           } else {
             resultDiv.innerHTML = `
-              <div class="status-card status-inactive">
-                <div class="status-icon">❌</div>
-                <div class="status-text">Not Connected</div>
-                <div class="status-details">
-                  <div><span class="label">MAC Address:</span><br /><span class="value">${mac}</span></div>
+              <div class="status-card inactive">
+                <div class="status-title">No Access - Not Connected</div>
+                <div class="detail-row">
+                  <span class="detail-label">MAC Address</span>
+                  <span class="detail-value">${mac}</span>
                 </div>
-                <p>This device doesn't have an active WiFi session.</p>
-                <a href="/" class="button" style="display:inline-block">Buy Access</a>
+                <p class="status-message">This device doesn't have an active WiFi session. Purchase access to continue browsing.</p>
+                <a href="/" style="text-decoration: none;">
+                  <button class="buy-button">Get WiFi Access</button>
+                </a>
               </div>
             `;
           }
         } catch (err) {
-          document.getElementById('resultDiv').innerHTML = `<p style="color:#dc3545">Error checking status: ${err.message}</p>`;
+          document.getElementById('resultDiv').innerHTML = `
+            <div class="status-card">
+              <p style="color:#dc3545">Error checking status: ${err.message}</p>
+            </div>
+          `;
         }
       }
 

@@ -52,13 +52,15 @@ app.get('/status', (req, res) => {
 // Create a voucher (simulate payment)
 app.post('/api/create-voucher', (req, res) => {
   const minutes = parseInt(req.body.minutes || '30', 10);
+  const paymentMethod = req.body.paymentMethod || 'demo';
   const code = nanoid(8).toUpperCase();
+  
   db.run(
-    'INSERT INTO vouchers (code, minutes) VALUES (?, ?)',
-    [code, minutes],
+    'INSERT INTO vouchers (code, minutes, payment_method) VALUES (?, ?, ?)',
+    [code, minutes, paymentMethod],
     function (err) {
       if (err) return res.status(500).json({ error: 'DB error' });
-      return res.json({ code, minutes });
+      return res.json({ code, minutes, paymentMethod });
     }
   );
 });
@@ -77,7 +79,7 @@ app.post('/api/redeem', (req, res) => {
       [mac, code, expiresAt],
       function (err2) {
         if (err2) return res.status(500).json({ error: 'DB error' });
-        return res.json({ mac, code, expiresAt });
+        return res.json({ mac, code, expires_at: expiresAt });
       }
     );
   });
