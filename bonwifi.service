@@ -1,0 +1,18 @@
+[Unit]
+Description=BonWifi Captive Portal & Payment System
+After=network.target hostapd.service dnsmasq.service
+Documentation=https://github.com/yourusername/BonWifi
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/BonWifi
+EnvironmentFile=/opt/BonWifi/.env
+ExecStart=/usr/bin/node /opt/BonWifi/server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

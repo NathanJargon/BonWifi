@@ -4,17 +4,150 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>BonWifi - Payment</title>
-    <style>body{font-family:Arial;padding:2rem;max-width:600px;margin:auto}label{display:block;margin-top:1rem}</style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+      body{
+        font-family:-apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+        padding:2rem;
+        max-width:600px;
+        margin:auto;
+        background:#f5f5f5;
+      }
+      .payment-card {
+        background:white;
+        padding:2rem;
+        border-radius:8px;
+        box-shadow:0 2px 8px rgba(0,0,0,0.1);
+      }
+      h1 { color:#0078D4; margin-bottom:1rem; }
+      label {
+        display:block;
+        margin-top:1rem;
+        font-weight:600;
+        color:#333;
+      }
+      input, select {
+        width:100%;
+        padding:0.75rem;
+        margin-top:0.5rem;
+        border:1px solid #ddd;
+        border-radius:4px;
+        box-sizing:border-box;
+        font-size:1rem;
+      }
+      .payment-methods {
+        display:flex;
+        gap:1rem;
+        margin-top:1.5rem;
+      }
+      .method-btn {
+        flex:1;
+        padding:1rem;
+        border:2px solid #ddd;
+        background:white;
+        border-radius:6px;
+        cursor:pointer;
+        font-weight:600;
+        transition:all 0.2s;
+      }
+      .method-btn.active {
+        border-color:#0078D4;
+        background:#e7f4ff;
+      }
+      .method-btn:hover {
+        border-color:#0078D4;
+      }
+      button {
+        width:100%;
+        padding:1rem;
+        margin-top:1.5rem;
+        background:#0078D4;
+        color:white;
+        border:none;
+        border-radius:4px;
+        font-weight:600;
+        font-size:1rem;
+        cursor:pointer;
+      }
+      button:hover { background:#106ebe; }
+      #qrContainer {
+        text-align:center;
+        margin-top:1.5rem;
+        display:none;
+      }
+      canvas {
+        border:1px solid #ddd;
+        padding:1rem;
+        background:white;
+        border-radius:4px;
+      }
+      .success {
+        background:#d4edda;
+        padding:1.5rem;
+        border-radius:4px;
+        border-left:4px solid #28a745;
+        margin-top:1.5rem;
+        display:none;
+      }
+      .success h2 { color:#155724; margin-top:0; }
+      .gcash-info {
+        background:#fff3cd;
+        padding:1rem;
+        border-radius:4px;
+        border-left:4px solid #ffc107;
+        margin-top:1rem;
+        font-size:0.9rem;
+        display:none;
+      }
+      .details {
+        background:#f9f9f9;
+        padding:1rem;
+        border-radius:4px;
+        margin-top:1rem;
+        font-family:monospace;
+        font-size:0.9rem;
+      }
+    </style>
   </head>
   <body>
-    <h1>Payment (Simulated)</h1>
-    <form id="payForm">
-      <label>Minutes: <input id="minutes" name="minutes" readonly /></label>
-      <label>Your MAC Address (auto-detected from router): <input id="mac" name="mac" readonly /></label>
-      <button type="submit">Pay (simulate)</button>
-    </form>
+    <div class="payment-card">
+      <h1>💳 WiFi Payment</h1>
+      
+      <form id="payForm">
+        <label>Minutes: <input id="minutes" name="minutes" readonly /></label>
+        <label>Your MAC Address: <input id="mac" name="mac" readonly /></label>
+        
+        <label>Payment Method:</label>
+        <div class="payment-methods">
+          <button type="button" class="method-btn active" data-method="gcash" onclick="selectMethod('gcash')">
+            🇵🇭 GCash
+          </button>
+          <button type="button" class="method-btn" data-method="card" onclick="selectMethod('card')">
+            💳 Card
+          </button>
+        </div>
+        
+        <div id="gcashInfo" class="gcash-info">
+          <strong>GCash Payment:</strong> Scan the QR code with your GCash app or click to open your GCash wallet. You'll receive a confirmation and access will be granted instantly.
+        </div>
 
-    <div id="result" style="margin-top:1rem"></div>
+        <button type="submit">Complete Payment</button>
+      </form>
+
+      <div id="qrContainer">
+        <h3>Scan to Pay with GCash</h3>
+        <canvas id="qr"></canvas>
+        <p style="color:#666;font-size:0.9rem">Or copy this link into your GCash app</p>
+      </div>
+
+      <div id="result" style="margin-top:1rem"></div>
+
+      <div class="success" id="successMsg">
+        <h2>✓ Payment Received!</h2>
+        <div class="details" id="successDetails"></div>
+        <p style="margin-top:1rem;color:#155724">Your WiFi access is now active. Enjoy browsing!</p>
+      </div>
+    </div>
 
     <script>
       const urlParams = new URLSearchParams(window.location.search);
@@ -22,13 +155,25 @@
       const macFromRouter = urlParams.get('mac');
       
       document.getElementById('minutes').value = minutes;
-      
-      // Generate a pseudo MAC if not provided by router, or use router's
       const deviceMac = macFromRouter || generatePseudoMAC();
       document.getElementById('mac').value = deviceMac;
 
+      let selectedMethod = 'gcash';
+
       function generatePseudoMAC() {
         return 'XX:XX:XX:' + Math.random().toString(16).substr(2, 2).toUpperCase() + ':' + Math.random().toString(16).substr(2, 2).toUpperCase() + ':' + Math.random().toString(16).substr(2, 2).toUpperCase();
+      }
+
+      function selectMethod(method) {
+        selectedMethod = method;
+        document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
+        document.querySelector(`[data-method="${method}"]`).classList.add('active');
+        
+        if (method === 'gcash') {
+          document.getElementById('gcashInfo').style.display = 'block';
+        } else {
+          document.getElementById('gcashInfo').style.display = 'none';
+        }
       }
 
       document.getElementById('payForm').addEventListener('submit', async (e) => {
@@ -44,30 +189,61 @@
         });
         const voucherData = await voucherRes.json();
         
-        // Step 2: Auto-redeem the voucher for this device
+        if (selectedMethod === 'gcash') {
+          // Show GCash QR code
+          const paymentUrl = `https://gcash.app/pay?voucher=${voucherData.code}&amount=${getPrice(m)}&mac=${mac}`;
+          new QRious({
+            element: document.getElementById('qr'),
+            value: paymentUrl,
+            size: 300
+          });
+          document.getElementById('qrContainer').style.display = 'block';
+          
+          // In production, this would wait for GCash webhook callback
+          // For demo, we auto-complete after a short delay
+          setTimeout(() => completePayment(voucherData.code, mac, m), 2000);
+        } else {
+          // Card payment flow
+          completePayment(voucherData.code, mac, m);
+        }
+      });
+
+      function getPrice(minutes) {
+        if (minutes === '30') return 0;
+        if (minutes === '120') return 120;
+        if (minutes === '1440') return 300;
+        return 0;
+      }
+
+      async function completePayment(code, mac, minutes) {
+        // Step 2: Auto-redeem the voucher
         const redeemRes = await fetch('/api/redeem', {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({mac:mac, code:voucherData.code})
+          body: JSON.stringify({mac:mac, code:code})
         });
         const redeemData = await redeemRes.json();
         
         if (redeemRes.ok) {
           const expiresDate = new Date(redeemData.expires_at);
-          document.getElementById('result').innerHTML = `
-            <div style="background:#d4edda;padding:1rem;border-radius:4px;border:1px solid #c3e6cb">
-              <h2 style="color:#155724;margin-top:0">✓ Connected!</h2>
-              <p><strong>Voucher:</strong> ${voucherData.code}</p>
-              <p><strong>Duration:</strong> ${m} minutes</p>
-              <p><strong>Device MAC:</strong> ${mac}</p>
-              <p><strong>Access expires:</strong> ${expiresDate.toLocaleTimeString()}</p>
-              <p style="margin-top:1rem;color:#666">You should now have WiFi access. Enjoy!</p>
-            </div>
+          document.getElementById('qrContainer').style.display = 'none';
+          document.getElementById('payForm').style.display = 'none';
+          document.getElementById('result').innerHTML = '';
+          document.getElementById('successDetails').innerHTML = `
+            <div><strong>Voucher Code:</strong> ${code}</div>
+            <div style="margin-top:0.5rem"><strong>Duration:</strong> ${minutes} minutes</div>
+            <div style="margin-top:0.5rem"><strong>Device MAC:</strong> ${mac}</div>
+            <div style="margin-top:0.5rem"><strong>Access Expires:</strong> ${expiresDate.toLocaleTimeString()}</div>
+            <div style="margin-top:0.5rem"><strong>Payment Method:</strong> ${selectedMethod.toUpperCase()}</div>
           `;
+          document.getElementById('successMsg').style.display = 'block';
         } else {
-          document.getElementById('result').innerHTML = `<p style="color:#721c24">Error: ${redeemData.error}</p>`;
+          document.getElementById('result').innerHTML = `<p style="color:#dc3545">Error: ${redeemData.error}</p>`;
         }
-      });
+      }
+
+      // Initialize
+      selectMethod('gcash');
     </script>
   </body>
 </html>

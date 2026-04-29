@@ -19,6 +19,8 @@ db.serialize(() => {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       code TEXT UNIQUE,
       minutes INTEGER,
+      payment_method TEXT,
+      gcash_transaction_id TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`
   );
@@ -95,6 +97,74 @@ app.get('/api/session/:mac', (req, res) => {
       return res.json({ active: expires > now, expires_at: row.expires_at });
     }
   );
+});
+
+// GCash Payment Endpoints (Production: integrate with real GCash API)
+
+// Initiate GCash payment
+app.post('/api/gcash/initiate', (req, res) => {
+  const { minutes, mac, amount } = req.body;
+  if (!minutes || !mac) return res.status(400).json({ error: 'minutes and mac required' });
+
+  const code = nanoid(8).toUpperCase();
+  const gcashTxnId = 'GCASH_' + nanoid(12).toUpperCase();
+
+  db.run(
+    'INSERT INTO vouchers (code, minutes, payment_method, gcash_transaction_id) VALUES (?, ?, ?, ?)',
+    [code, minutes, 'gcash', gcashTxnId],
+    function (err) {
+      if (err) return res.status(500).json({ error: 'DB error' });
+      
+      // Return payment link for GCash
+      const paymentUrl = `https://api.gcash.com/pay?txn=${gcashTxnId}&amount=${amount}&reference=${code}`;
+      return res.json({
+        code,
+        gcashTxnId,
+        paymentUrl,
+        amount,
+        minutes
+      });
+    }
+  );
+});
+
+// GCash Webhook Callback (production: verify signature & transaction status)
+app.post('/api/gcash/webhook', (req, res) => {
+  const { transactionId, status, reference, amount } = req.body;
+
+  if (status !== 'COMPLETED') {
+    return res.status(400).json({ error: 'Payment not completed' });
+  }
+
+  db.get('SELECT code, minutes FROM vouchers WHERE gcash_transaction_id = ?', [transactionId], (err, voucher) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!voucher) return res.status(404).json({ error: 'Voucher not found' });
+
+    // Log successful payment
+    db.run('UPDATE vouchers SET payment_method = ? WHERE code = ?', ['gcash_confirmed', voucher.code]);
+
+    return res.json({ success: true, message: 'Payment confirmed', voucherCode: voucher.code });
+  });
+});
+
+// Check voucher payment status
+app.get('/api/voucher/status/:code', (req, res) => {
+  const code = req.params.code;
+  db.get('SELECT * FROM vouchers WHERE code = ?', [code], (err, row) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    if (!row) return res.status(404).json({ error: 'Voucher not found' });
+
+    const status = {
+      code: row.code,
+      minutes: row.minutes,
+      paymentMethod: row.payment_method,
+      gcashTxnId: row.gcash_transaction_id,
+      createdAt: row.created_at,
+      paid: row.payment_method.includes('confirmed')
+    };
+
+    return res.json(status);
+  });
 });
 
 app.listen(PORT, () => {
