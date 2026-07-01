@@ -12,7 +12,7 @@ Guests can buy WiFi access via QR codes (GCash, PayMaya, GoTyme). Auto-redeems a
 - 🎟️ **Instant Vouchers** — Auto-generated & auto-redeemed  
 - 🔐 **Session Tracking** — MAC-based access with expiry times
 - ✅ **Status Checker** — Guests verify access anytime
-- 🚀 **Lightweight** — Runs on Raspberry Pi Zero 2 W (~$25)
+- 🚀 **Lightweight** — Runs on your Windows PC / Laptop
 
 ---
 
@@ -42,7 +42,7 @@ After payment confirmation
 # Install
 npm install
 
-# Run
+# Run (As Administrator)
 npm start
 
 # Visit
@@ -57,10 +57,10 @@ http://localhost:3000/status    # Check access status
 
 | Component | Tech |
 |-----------|------|
-| Frontend | HTML5, CSS3, JavaScript (QRious) |
+| Frontend | HTML5, CSS3, JavaScript |
 | Backend | Node.js + Express |
 | Database | SQLite |
-| Network | hostapd (WiFi) + dnsmasq (DHCP/captive portal) |
+| Network | Windows Mobile Hotspot + Windows Firewall |
 
 ---
 
@@ -100,99 +100,39 @@ GET /api/session/:mac
 
 ---
 
-## 🌐 Deployment on Raspberry Pi Zero 2 W
+## 🌐 Deployment on Windows PC
 
-### Hardware
+### Requirements
 
-- Raspberry Pi Zero 2 W (~$15–30)
-- microSD card (16GB+)
-- 5V power supply (2.5A+)
-- Optional: USB-Ethernet adapter, case
+- A Windows 10/11 PC or Laptop
+- Node.js (v16 or higher) installed
+- An active internet connection (to share via mobile hotspot)
 
-### Install
+### Setup & Run
 
-```bash
-# 1. Flash Raspberry Pi OS Lite to microSD
+1. **Enable Mobile Hotspot**:
+   - Go to Windows **Settings ➔ Network & Internet ➔ Mobile Hotspot**.
+   - Turn it **ON**. Note down your Hotspot Network name (SSID) and Password.
 
-# 2. Boot & enable SSH
-ssh pi@raspberrypi.local
-sudo raspi-config
-# → Enable SSH
+2. **Open Command Line as Administrator**:
+   - Search for `cmd` or `PowerShell` in the Windows Start menu, right-click, and select **Run as Administrator** (this is required for Node.js to manage Windows Firewall rules for clients).
 
-# 3. Clone & setup
-git clone <repo-url>
-cd BonWifi
-chmod +x setup-pi-zero.sh
-sudo ./setup-pi-zero.sh
+3. **Install & Start**:
+   ```bash
+   # Navigate to the project directory
+   cd c:\Nash\Projects\BonWifi
 
-# Done! WiFi broadcasts as "BonWifi" (password: BonWifi123!)
-# Server runs at http://10.0.0.1:3000
-```
+   # Install dependencies
+   npm install
 
-### Manual Setup (if script doesn't work)
+   # Start the server
+   npm start
+   ```
 
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y hostapd dnsmasq sqlite3 nodejs npm
-
-# Configure wlan0
-sudo tee /etc/network/interfaces.d/wlan0 > /dev/null << EOF
-auto wlan0
-iface wlan0 inet static
-  address 10.0.0.1
-  netmask 255.255.255.0
-EOF
-
-# Configure dnsmasq
-sudo tee /etc/dnsmasq.conf > /dev/null << EOF
-interface=wlan0
-dhcp-range=10.0.0.2,10.0.0.50,12h
-dhcp-option=option:router,10.0.0.1
-address=/#/10.0.0.1
-EOF
-
-# Configure hostapd
-sudo tee /etc/hostapd/hostapd.conf > /dev/null << EOF
-interface=wlan0
-driver=nl80211
-ssid=BonWifi
-hw_mode=g
-channel=7
-wpa=2
-wpa_passphrase=BonWifi123!
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=CCMP
-EOF
-
-# Enable IP forwarding
-echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
-sudo sysctl -p
-
-# NAT rules
-UPSTREAM=$(ip route | grep default | awk '{print $5}' | head -1)
-sudo iptables -t nat -A POSTROUTING -o $UPSTREAM -j MASQUERADE
-sudo iptables-save | sudo tee /etc/iptables/rules.v4
-
-# Install BonWifi
-cd /opt
-sudo git clone <repo-url> BonWifi
-cd BonWifi
-sudo npm install
-sudo cp bonwifi.service /etc/systemd/system/
-sudo systemctl enable bonwifi hostapd dnsmasq
-sudo systemctl start bonwifi hostapd dnsmasq
-```
-
-### Verify
-
-```bash
-# Check services
-sudo systemctl status bonwifi
-sudo systemctl status hostapd
-
-# Test: Connect to "BonWifi" network from another device
-# Browser should auto-open http://10.0.0.1:3000/
-```
+4. **Verify**:
+   - The server will run at `http://192.168.137.1:3000/`.
+   - Connect a device (like a phone) to your Windows Mobile Hotspot.
+   - The device will be blocked from internet access by default, but can navigate to `http://192.168.137.1:3000` to pay and claim WiFi access!
 
 ---
 
@@ -204,19 +144,23 @@ Edit `public/index.html` → change plan prices in the HTML or update `getPrice(
 
 ### WiFi SSID & Password
 
-Edit `/etc/hostapd/hostapd.conf` on Pi:
-```
-ssid=YourNetworkName
-wpa_passphrase=YourPassword
-```
+You configure your WiFi network name and password directly in the **Windows Mobile Hotspot settings** (Settings ➔ Network & Internet ➔ Mobile Hotspot ➔ Edit).
+
+### 📋 Recommended Customer Poster Setup
+
+We have built a **WiFi Poster Generator** tool directly into your server! To generate and print your customer poster:
+
+1. Start the BonWifi server on your PC (`npm start`).
+2. In your PC browser, go to: `http://localhost:3000/generator`
+3. Input your Windows Mobile Hotspot Name (SSID) and Password.
+4. Click **Print Poster** to print a beautifully formatted A4 customer sign containing:
+   - **QR Code 1: Scan to Connect**: Automatically connects the guest's phone to your Windows Mobile Hotspot when scanned.
+   - **QR Code 2: Scan to Open Portal**: Opens their browser directly to the payment page (`http://192.168.137.1:3000`).
 
 ### Payment Methods
 
-Currently mock (simulation). To integrate real payments:
-
-1. **GCash** - Add credentials to `.env`, implement webhook verification in `server.js`
-2. **PayMaya** - Similar process
-3. **GoTyme** - Similar process
+- 💳 **GCash**: Fully integrated and automated! Set your `GCASH_PHONE_NUMBER` and `SMS_WEBHOOK_SECRET` in your `.env` file, and place your GCash QR code image as `public/gcash-qr.jpg`. Follow the [SMS Forwarder Setup Guide](file:///c:/Nash/Projects/BonWifi/docs/SMS_FORWARDER_SETUP.md) to set up automatic payment verification.
+- 🧪 **PayMaya / GoTyme**: Currently running in simulated (demo) mode.
 
 ### Session Timeout
 

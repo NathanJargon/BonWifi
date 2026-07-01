@@ -218,6 +218,43 @@
       .hidden {
         display: none;
       }
+
+      .spinner {
+        border: 4px solid #f3f3f3;
+        border-top: 4px solid #667eea;
+        border-radius: 50%;
+        width: 30px;
+        height: 30px;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 0.5rem;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .error-banner {
+        background: #fef2f2;
+        border: 1px solid #fee2e2;
+        color: #b91c1c;
+        padding: 0.75rem;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        font-size: 0.9rem;
+        display: none;
+        text-align: center;
+      }
+      .info-value-box {
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-weight: bold;
+        text-align: center;
+        font-size: 1.2rem;
+        color: #1f2937;
+        margin-top: 0.25rem;
+        margin-bottom: 1rem;
+      }
       
       @media (max-width: 600px) {
         .container {
@@ -270,23 +307,55 @@
         <button type="submit" class="submit-btn">Proceed to Pay</button>
       </form>
 
-      <div id="qrContainer">
-        <h2>Scan to Pay</h2>
-        <canvas id="qr"></canvas>
-        <p class="qr-instruction">Open your payment app and scan the code above</p>
+      <div id="errorBanner" class="error-banner"></div>
+
+      <div id="qrContainer" style="display: none;">
+        <h2>Scan to Pay via GCash</h2>
+        <div id="qrImageContainer" style="margin: 1.5rem 0; text-align: center;">
+          <!-- Fallback or custom static QR code -->
+          <img id="gcashQrImg" src="/public/gcash-qr.jpg" alt="GCash QR Code" style="max-width: 250px; width: 100%; border: 2px solid #e5e7eb; border-radius: 8px; padding: 0.5rem; background: white;" onerror="this.style.display='none'; document.getElementById('qrFallbackText').style.display='block';" />
+          <div id="qrFallbackText" style="display: none; padding: 2rem; border: 2px dashed #d1d5db; border-radius: 8px; background: #f9fafb;">
+            <p style="color: #666; font-weight: 500;">GCash QR Code Image Not Found</p>
+            <p style="color: #999; font-size: 0.85rem; margin-top: 0.5rem;">Please pay directly using the mobile number below.</p>
+          </div>
+        </div>
+        
+        <div style="margin-bottom: 1.5rem;">
+          <p style="color: #666; font-size: 0.95rem; margin-bottom: 0.25rem;">GCash Number</p>
+          <div id="gcashPhoneVal" class="info-value-box">Loading...</div>
+          
+          <p style="color: #666; font-size: 0.95rem; margin-bottom: 0.25rem;">Amount to Pay</p>
+          <div id="amountVal" class="info-value-box" style="color: #667eea; border-color: #667eea40; background: #667eea05;">₱0.00</div>
+        </div>
+
+        <div class="form-row" style="margin-top: 1.5rem; text-align: left;">
+          <label for="refNo">Enter GCash Reference Number</label>
+          <input type="text" id="refNo" placeholder="e.g. 901234567890" maxlength="13" style="text-align: center; font-size: 1.25rem; font-weight: bold; letter-spacing: 2px;" />
+          <p class="qr-instruction" style="text-align: left; font-size: 0.8rem; margin-top: 0.5rem; line-height: 1.4;">
+            Once you complete the payment, GCash will send you a text message containing an 11-13 digit Reference Number. Enter it above to claim your WiFi time.
+          </p>
+        </div>
+
+        <button type="button" id="claimBtn" class="submit-btn" style="margin-top: 1.5rem;">Confirm Payment & Connect</button>
+
+        <div id="pollingStatus" style="display: none; margin-top: 1.5rem;">
+          <div class="spinner"></div>
+          <p id="pollingText" style="color: #4b5563; font-weight: 600; font-size: 0.95rem;">Checking payment...</p>
+          <p style="color: #9ca3af; font-size: 0.8rem; margin-top: 0.25rem;">Waiting for GCash SMS confirmation. This usually takes 5-15 seconds.</p>
+        </div>
       </div>
 
       <div id="successMessage" class="success-message">
         <h2>Payment Successful</h2>
         <p style="color: #666; margin-bottom: 1rem;">You now have WiFi access</p>
         <div class="success-details" id="successDetails"></div>
-        <p style="color: #666; margin-top: 1rem; font-size: 0.9rem;">You can now connect to the WiFi network</p>
+        <p style="color: #666; margin-top: 1rem; font-size: 0.9rem;">You can now browse the internet freely.</p>
       </div>
     </div>
 
     <script>
       const urlParams = new URLSearchParams(window.location.search);
-      const minutes = urlParams.get('minutes') || 30;
+      const minutes = parseInt(urlParams.get('minutes') || '30', 10);
       const macFromRouter = urlParams.get('mac');
       
       document.getElementById('minutes').value = getReadableMinutes(minutes);
@@ -294,6 +363,23 @@
       document.getElementById('mac').value = deviceMac;
 
       let selectedMethod = 'gcash';
+      let gcashPhoneNumber = 'Not Configured';
+      let pollInterval;
+      let pollAttempts = 0;
+      const maxPollAttempts = 40; // 2 minutes (40 * 3 seconds)
+
+      // Load config dynamically from server
+      async function loadConfig() {
+        try {
+          const res = await fetch('/api/config');
+          const data = await res.json();
+          gcashPhoneNumber = data.gcashPhoneNumber;
+          document.getElementById('gcashPhoneVal').innerText = gcashPhoneNumber;
+        } catch (err) {
+          console.error('Error loading config:', err);
+        }
+      }
+      loadConfig();
 
       function generatePseudoMAC() {
         return 'XX:XX:XX:' + 
@@ -314,84 +400,160 @@
         selectedMethod = method;
         document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
         document.querySelector(`[data-method="${method}"]`).classList.add('active');
+        
+        if (method !== 'gcash') {
+          alert('Note: Only GCash is integrated with automatic verification. Other methods are simulated/disabled.');
+        }
       }
 
-      document.getElementById('payForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const m = minutes;
-        const mac = document.getElementById('mac').value;
-        
-        // Step 1: Create voucher
-        const voucherRes = await fetch('/api/create-voucher', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({minutes:m, paymentMethod: selectedMethod})
-        });
-        const voucherData = await voucherRes.json();
-        
-        // Step 2: Show QR code based on payment method
-        const provider = selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1);
-        const paymentUrl = `https://${selectedMethod}.app/pay?amount=${getPrice(m)}&reference=${voucherData.code}`;
-        
-        new QRious({
-          element: document.getElementById('qr'),
-          value: paymentUrl,
-          size: 300,
-          level: 'H'
-        });
-        
-        document.getElementById('payForm').classList.add('hidden');
-        document.getElementById('qrContainer').style.display = 'block';
-        
-        // Simulate payment confirmation after 2 seconds
-        setTimeout(() => completePayment(voucherData.code, mac, m), 2000);
-      });
-
-      function getPrice(minutes) {
-        if (minutes == 30) return 50;
-        if (minutes == 60) return 100;
-        if (minutes == 120) return 200;
-        if (minutes == 180) return 300;
+      function getPrice(mins) {
+        if (mins == 30) return 50;
+        if (mins == 60) return 100;
+        if (mins == 120) return 200;
+        if (mins == 180) return 300;
         return 0;
       }
 
-      async function completePayment(code, mac, minutes) {
-        // Step 2: Auto-redeem the voucher
-        const redeemRes = await fetch('/api/redeem', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({mac:mac, code:code})
-        });
-        const redeemData = await redeemRes.json();
+      // Show Payment Screen with QR Code and Instructions
+      document.getElementById('payForm').addEventListener('submit', (e) => {
+        e.preventDefault();
         
-        if (redeemRes.ok) {
-          const expiresDate = new Date(redeemData.expires_at);
-          const price = getPrice(minutes);
-          
-          document.getElementById('qrContainer').style.display = 'none';
-          document.getElementById('successMessage').style.display = 'block';
-          
-          document.getElementById('successDetails').innerHTML = `
-            <div class="detail-row">
-              <span class="detail-label">Access Duration</span>
-              <span class="detail-value">${getReadableMinutes(minutes)}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Price Paid</span>
-              <span class="detail-value">${price === 0 ? 'Free' : '₱' + price}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Payment Method</span>
-              <span class="detail-value">${selectedMethod.charAt(0).toUpperCase() + selectedMethod.slice(1)}</span>
-            </div>
-            <div class="detail-row">
-              <span class="detail-label">Expires At</span>
-              <span class="detail-value">${expiresDate.toLocaleTimeString()}</span>
-            </div>
-          `;
-        } else {
-          document.getElementById('qrContainer').innerHTML = `<p style="color:#dc3545">Error: ${redeemData.error}</p>`;
+        if (selectedMethod !== 'gcash') {
+          // If paymaya or gotyme is chosen, simulate instant success like legacy code
+          simulateLegacyPayment();
+          return;
         }
+
+        document.getElementById('payForm').classList.add('hidden');
+        document.getElementById('amountVal').innerText = `₱${getPrice(minutes)}.00`;
+        document.getElementById('qrContainer').style.display = 'block';
+      });
+
+      // Claim payment click handler
+      document.getElementById('claimBtn').addEventListener('click', () => {
+        const refNo = document.getElementById('refNo').value.trim();
+        if (!refNo) {
+          showError('Please enter the GCash Reference Number.');
+          return;
+        }
+
+        // Validate Ref No length (typically 11-13 digits)
+        if (!/^\d{11,13}$/.test(refNo)) {
+          showError('Please enter a valid 11-13 digit GCash Reference Number.');
+          return;
+        }
+
+        startClaiming(refNo);
+      });
+
+      function showError(msg) {
+        const banner = document.getElementById('errorBanner');
+        banner.innerText = msg;
+        banner.style.display = 'block';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      function startClaiming(refNo) {
+        document.getElementById('errorBanner').style.display = 'none';
+        document.getElementById('claimBtn').disabled = true;
+        document.getElementById('claimBtn').innerText = 'Verifying...';
+        document.getElementById('refNo').disabled = true;
+        document.getElementById('pollingStatus').style.display = 'block';
+
+        pollAttempts = 0;
+        pollInterval = setInterval(() => {
+          pollPayment(refNo, deviceMac, minutes);
+        }, 3000);
+      }
+
+      async function pollPayment(refNo, mac, mins) {
+        pollAttempts++;
+        try {
+          const res = await fetch('/api/gcash/claim-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refNo, mac, minutes: mins })
+          });
+          const data = await res.json();
+          
+          if (!res.ok) {
+            clearInterval(pollInterval);
+            showError(data.error || 'Payment verification failed.');
+            resetClaimUI();
+            return;
+          }
+          
+          if (data.status === 'success') {
+            clearInterval(pollInterval);
+            showSuccess(data, mins);
+          } else if (data.status === 'pending') {
+            document.getElementById('pollingText').innerText = `Checking payment... (Attempt ${pollAttempts})`;
+            if (pollAttempts >= maxPollAttempts) {
+              clearInterval(pollInterval);
+              showError('Payment confirmation SMS has not arrived yet. Please ensure you have completed the payment and try again in a few moments.');
+              resetClaimUI();
+            }
+          }
+        } catch (err) {
+          console.error('Polling failed:', err);
+          document.getElementById('pollingText').innerText = 'Connection error, retrying...';
+        }
+      }
+
+      function resetClaimUI() {
+        document.getElementById('pollingStatus').style.display = 'none';
+        document.getElementById('claimBtn').disabled = false;
+        document.getElementById('claimBtn').innerText = 'Confirm Payment & Connect';
+        document.getElementById('refNo').disabled = false;
+      }
+
+      function showSuccess(data, mins) {
+        document.getElementById('qrContainer').style.display = 'none';
+        document.getElementById('successMessage').style.display = 'block';
+        
+        const expiresDate = new Date(data.expires_at);
+        document.getElementById('successDetails').innerHTML = `
+          <div class="detail-row">
+            <span class="detail-label">Access Duration</span>
+            <span class="detail-value">${getReadableMinutes(mins)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Price Paid</span>
+            <span class="detail-value">₱${getPrice(mins)}.00</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">WiFi Voucher Code</span>
+            <span class="detail-value" style="font-family: monospace;">${data.code}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Expires At</span>
+            <span class="detail-value">${expiresDate.toLocaleTimeString()}</span>
+          </div>
+        `;
+      }
+
+      function simulateLegacyPayment() {
+        document.getElementById('payForm').classList.add('hidden');
+        document.getElementById('successMessage').style.display = 'block';
+        const expiresDate = new Date(Date.now() + minutes * 60000);
+        document.getElementById('successDetails').innerHTML = `
+          <div class="detail-row">
+            <span class="detail-label">Access Duration</span>
+            <span class="detail-value">${getReadableMinutes(minutes)}</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Price Paid</span>
+            <span class="detail-value">₱${getPrice(minutes)}.00</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Payment Method</span>
+            <span class="detail-value">${selectedMethod.toUpperCase()} (Simulated)</span>
+          </div>
+          <div class="detail-row">
+            <span class="detail-label">Expires At</span>
+            <span class="detail-value">${expiresDate.toLocaleTimeString()}</span>
+          </div>
+        `;
       }
 
       // Allow back navigation

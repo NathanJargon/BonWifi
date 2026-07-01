@@ -1,0 +1,400 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>BonWifi - Connection Poster Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', sans-serif;
+        background: #f3f4f6;
+        color: #1f2937;
+        padding: 2rem 1rem;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .container {
+        max-width: 900px;
+        width: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1.2fr;
+        gap: 2rem;
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        padding: 2rem;
+      }
+
+      .config-panel {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      h1 {
+        font-size: 1.6rem;
+        color: #111827;
+        margin-bottom: 0.5rem;
+      }
+
+      p.desc {
+        font-size: 0.9rem;
+        color: #6b7280;
+        line-height: 1.5;
+      }
+
+      .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+      }
+
+      label {
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #374151;
+      }
+
+      input {
+        padding: 0.75rem;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        font-size: 1rem;
+      }
+
+      input:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+      }
+
+      .btn {
+        padding: 0.75rem 1.5rem;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-align: center;
+        text-decoration: none;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn-secondary {
+        background: #e5e7eb;
+        color: #374151;
+        margin-top: 1rem;
+      }
+
+      .btn-secondary:hover {
+        background: #d1d5db;
+      }
+
+      /* Poster Preview Area */
+      .poster-preview-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        border-left: 1px solid #e5e7eb;
+        padding-left: 2rem;
+      }
+
+      /* A4 Aspect Ratio Card */
+      .poster-card {
+        width: 380px;
+        height: 537px; /* 1:sqrt(2) ratio */
+        background: white;
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        padding: 2.5rem 2rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      /* Poster Deco Border */
+      .poster-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 8px;
+        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+      }
+
+      .poster-logo {
+        font-size: 1.8rem;
+        font-weight: 800;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+
+      .poster-subtitle {
+        font-size: 0.85rem;
+        color: #4b5563;
+        font-weight: 500;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+        margin-top: 0.25rem;
+      }
+
+      .poster-step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+      }
+
+      .step-num {
+        background: #e0e7ff;
+        color: #4f46e5;
+        font-weight: 800;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+      }
+
+      .step-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: #111827;
+      }
+
+      .poster-qr-canvas {
+        background: white;
+        padding: 0.35rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+      }
+
+      .step-instruction {
+        font-size: 0.75rem;
+        color: #6b7280;
+        max-width: 90%;
+        line-height: 1.3;
+      }
+
+      .poster-wifi-details {
+        background: #f9fafb;
+        border: 1px solid #f3f4f6;
+        border-radius: 6px;
+        padding: 0.5rem;
+        width: 100%;
+        font-size: 0.75rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        text-align: left;
+      }
+
+      .wifi-detail-label {
+        color: #6b7280;
+        font-weight: 500;
+      }
+
+      .wifi-detail-val {
+        color: #111827;
+        font-weight: 700;
+        font-family: monospace;
+      }
+
+      .divider {
+        width: 100%;
+        height: 1px;
+        background: #e5e7eb;
+        margin: 0.5rem 0;
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          grid-template-columns: 1fr;
+        }
+        .poster-preview-container {
+          border-left: none;
+          padding-left: 0;
+          border-top: 1px solid #e5e7eb;
+          padding-top: 2rem;
+        }
+      }
+
+      /* Print Specific CSS */
+      @media print {
+        body {
+          background: white;
+          padding: 0;
+          margin: 0;
+        }
+        .config-panel, .btn-secondary, .poster-preview-container > h2, p.desc {
+          display: none !important;
+        }
+        .container {
+          box-shadow: none;
+          padding: 0;
+          margin: 0;
+          background: transparent;
+        }
+        .poster-preview-container {
+          border: none;
+          padding: 0;
+          margin: 0;
+        }
+        .poster-card {
+          border: none;
+          box-shadow: none;
+          width: 100%;
+          height: 100vh;
+          padding: 4rem 3rem;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="config-panel">
+        <div>
+          <h1>WiFi Poster Generator</h1>
+          <p class="desc">Configure your Windows Mobile Hotspot details here to generate a beautiful, printable customer sign-in poster.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="ssidInput">WiFi SSID (Network Name)</label>
+          <input type="text" id="ssidInput" value="BonWifi" placeholder="e.g. My PC Hotspot" />
+        </div>
+
+        <div class="form-group">
+          <label for="passInput">WiFi Password</label>
+          <input type="text" id="passInput" value="BonWifi123!" placeholder="Enter Hotspot Password" />
+        </div>
+
+        <div class="form-group">
+          <label for="portalUrlInput">Portal Address (URL)</label>
+          <input type="text" id="portalUrlInput" value="http://192.168.137.1:3000" placeholder="e.g. http://192.168.137.1:3000" />
+        </div>
+
+        <button onclick="updatePoster()" class="btn btn-primary">Generate Poster</button>
+      </div>
+
+      <div class="poster-preview-container">
+        <h2 style="margin-bottom: 1rem; font-size: 1.2rem; color: #4b5563;">Poster Preview</h2>
+        
+        <div id="printArea" class="poster-card">
+          <div>
+            <div class="poster-logo">BonWifi</div>
+            <div class="poster-subtitle">Instant Internet Hotspot</div>
+          </div>
+
+          <div class="poster-step">
+            <span class="step-num">1</span>
+            <span class="step-title">Scan to Connect</span>
+            <canvas id="qrWifi" class="poster-qr-canvas"></canvas>
+            <span class="step-instruction">Scan with your phone's camera to join the WiFi network automatically.</span>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="poster-step">
+            <span class="step-num">2</span>
+            <span class="step-title">Scan to Buy Time</span>
+            <canvas id="qrUrl" class="poster-qr-canvas"></canvas>
+            <span class="step-instruction">Once connected, scan this QR to buy internet voucher or enter your GCash code.</span>
+          </div>
+
+          <div class="poster-wifi-details">
+            <div>
+              <span class="wifi-detail-label">SSID:</span>
+              <span id="wifiSSID" class="wifi-detail-val">BonWifi</span>
+            </div>
+            <div>
+              <span class="wifi-detail-label">Password:</span>
+              <span id="wifiPass" class="wifi-detail-val">BonWifi123!</span>
+            </div>
+          </div>
+        </div>
+
+        <button onclick="window.print()" class="btn btn-secondary" style="width: 380px;">🖨️ Print Poster</button>
+      </div>
+    </div>
+
+    <script>
+      let qrWifiInst, qrUrlInst;
+
+      function initQRs() {
+        qrWifiInst = new QRious({
+          element: document.getElementById('qrWifi'),
+          size: 130,
+          level: 'H'
+        });
+
+        qrUrlInst = new QRious({
+          element: document.getElementById('qrUrl'),
+          size: 130,
+          level: 'H'
+        });
+
+        // Use the current domain as portal default if it matches expected pattern
+        const currentOrigin = window.location.origin;
+        if (currentOrigin && currentOrigin.includes('localhost') || currentOrigin.includes('192.168.137.')) {
+          document.getElementById('portalUrlInput').value = currentOrigin;
+        }
+
+        updatePoster();
+      }
+
+      function updatePoster() {
+        const ssid = document.getElementById('ssidInput').value.trim() || 'BonWifi';
+        const password = document.getElementById('passInput').value.trim() || '';
+        const portalUrl = document.getElementById('portalUrlInput').value.trim() || 'http://192.168.137.1:3000';
+
+        // Update text labels
+        document.getElementById('wifiSSID').innerText = ssid;
+        document.getElementById('wifiPass').innerText = password || '(No Password)';
+
+        // Generate WiFi payload: WIFI:S:<SSID>;T:WPA;P:<PASSWORD>;;
+        let wifiPayload = `WIFI:S:${ssid};`;
+        if (password) {
+          wifiPayload += `T:WPA;P:${password};;`;
+        } else {
+          wifiPayload += `T:nopass;;`;
+        }
+
+        qrWifiInst.value = wifiPayload;
+        qrUrlInst.value = portalUrl;
+      }
+
+      // Initialize on load
+      window.onload = initQRs;
+    </script>
+  </body>
+</html>
